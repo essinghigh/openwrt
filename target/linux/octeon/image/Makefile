@@ -87,6 +87,17 @@ define Device/ubnt_edgerouter-lite
 endef
 TARGET_DEVICES += ubnt_edgerouter-lite
 
+# ERPOE-5: two directly attached PHYs and three AR8327 switch ports.
+define Device/ubnt_edgerouter-poe
+  $(Device/ubnt_edgerouter-lite)
+  DEVICE_MODEL := EdgeRouter PoE
+  DEVICE_DTS := cn5020_ubnt_edgerouter-poe
+  SUPPORTED_DEVICES := ubnt,edgerouter-poe
+  DEVICE_PACKAGES += kmod-dsa-qca8k kmod-phy-qca83xx ustp ip-bridge
+  IMAGE/sysupgrade.tar/squashfs += | append-metadata
+endef
+TARGET_DEVICES += ubnt_edgerouter-poe
+
 define Device/ubnt_unifi-usg
   DEVICE_VENDOR := Ubiquiti
   DEVICE_MODEL := UniFi Security Gateway

@@ -7,6 +7,10 @@
 board_config_update
 
 case "$(board_name)" in
+ubnt,edgerouter-poe)
+	[ -s /etc/config/network ] || touch /tmp/erpoe-switch-firstboot
+	ucidef_set_interface_lan "lan0 lan1 lan2 lan3 lan4"
+	;;
 itus,shield-router|\
 ubnt,erlite|\
 ubnt,usg)

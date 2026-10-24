@@ -1,0 +1,130 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * The hardware layer of octeon_pip without OCTEON hardware (COMPILE_TEST):
+ * the arch definitions the driver uses, and the primitives as no-ops.
+ */
+#ifndef OCTEON_PIP_HW_STUB_H
+#define OCTEON_PIP_HW_STUB_H
+
+#include <linux/compiler.h>
+#include <linux/io.h>
+#include <linux/smp.h>
+#include <linux/types.h>
+
+/* The chip models and features, none of which an x86 build has */
+enum {
+	OCTEON_CN30XX, OCTEON_CN30XX_PASS1, OCTEON_CN31XX,
+	OCTEON_CN31XX_PASS1, OCTEON_CN38XX, OCTEON_CN38XX_PASS1,
+	OCTEON_CN38XX_PASS2, OCTEON_CN50XX, OCTEON_CN52XX,
+	OCTEON_CN52XX_PASS1_0, OCTEON_CN52XX_PASS1_X, OCTEON_CN56XX,
+	OCTEON_CN56XX_PASS1_X, OCTEON_CN58XX, OCTEON_CN61XX,
+	OCTEON_CN63XX, OCTEON_CN66XX, OCTEON_CN68XX, OCTEON_CN68XX_PASS1_X,
+	OCTEON_CN68XX_PASS2_X, OCTEON_CN70XX, OCTEON_CNF71XX,
+};
+
+#define OCTEON_IS_MODEL(x)	((void)(x), false)
+
+enum octeon_feature {
+	OCTEON_FEATURE_NO_WPTR,
+};
+
+static inline bool octeon_has_feature(enum octeon_feature feature)
+{
+	return false;
+}
+
+/* The POW group interrupts */
+#define OCTEON_IRQ_WORKQ0	0
+
+static inline u64 opip_rd(u64 addr)
+{
+	return 0;
+}
+
+static inline void opip_wr(u64 addr, u64 val)
+{
+}
+
+static inline u32 opip_fau_rd32(u64 addr)
+{
+	return 0;
+}
+
+static inline void opip_fau_wr32(u64 addr, u32 val)
+{
+}
+
+static inline void *opip_fpa_alloc(int pool)
+{
+	return NULL;
+}
+
+static inline void opip_fpa_free(void *buf, int pool, unsigned int lines)
+{
+}
+
+static inline void opip_fpa_free_nosync(void *buf, int pool,
+					unsigned int lines)
+{
+}
+
+static inline void opip_iobdma(u64 cmd)
+{
+}
+
+static inline u64 opip_scratch_rd(unsigned int addr)
+{
+	return 0;
+}
+
+static inline void opip_scratch_wr(unsigned int addr, u64 val)
+{
+}
+
+static inline int opip_num_interfaces(void)
+{
+	return 0;
+}
+
+static inline enum opip_mode opip_iface_mode(int iface)
+{
+	return OPIP_MODE_DISABLED;
+}
+
+#define opip_iobdma_wait()	barrier()
+
+static inline u64 opip_phys(const void *ptr)
+{
+	return virt_to_phys((void *)ptr);
+}
+
+static inline void *opip_virt(u64 phys)
+{
+	return phys_to_virt(phys);
+}
+
+static inline u64 opip_xkphys_to_phys(const void *ptr)
+{
+	return virt_to_phys((void *)ptr);
+}
+
+static inline unsigned int opip_core(void)
+{
+	return raw_smp_processor_id();
+}
+
+static inline bool opip_on_simulator(void)
+{
+	return false;
+}
+
+static inline unsigned int opip_clock_hz(void)
+{
+	return 1000000000;
+}
+
+static inline void opip_errata_qlm_cdr(void)
+{
+}
+
+#endif /* OCTEON_PIP_HW_STUB_H */

@@ -1,0 +1,28 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+[ "$(board_name)" = "ubnt,edgerouter-poe" ] || exit 0
+[ -f /tmp/erpoe-switch-firstboot ] || exit 0
+
+erpoe_bridge_defaults() {
+	local section="$1" name
+	config_get name "$section" name
+	[ "$name" = "br-lan" ] || return 0
+	uci set network."$section".stp='1'
+}
+
+config_load network
+config_foreach erpoe_bridge_defaults device
+# Keep receive polling and forwarded data processing on separate CPUs.
+uci set network.globals.packet_steering='1'
+uci commit network
+
+# The image starts as a managed switch, with no DHCP server on its LAN.
+uci set dhcp.lan.ignore='1'
+uci set dhcp.lan.ra='disabled'
+uci set dhcp.lan.dhcpv6='disabled'
+uci set dhcp.lan.ndp='disabled'
+uci commit dhcp
+rm -f /tmp/erpoe-switch-firstboot
+exit 0

@@ -1,0 +1,59 @@
+Subject: [PATCH] net: ethernet: cavium: build the octeon_pip backport
+
+Build the driver from OpenWrt PR 26060, head
+160f92b4e3bc4e09533f75ed3f243d106c4c4f9f, alongside the management driver.
+The source overlay carries its original licensing and attribution.
+The PCS, XDP fragment helpers, timer setup and CPU mask iteration are
+adapted to the 6.12 interfaces.
+
+---
+--- a/drivers/net/ethernet/cavium/Kconfig
++++ b/drivers/net/ethernet/cavium/Kconfig
+@@ -92,6 +92,27 @@ config OCTEON_MGMT_ETHERNET
+ 	  port on Cavium Networks' Octeon CN57XX, CN56XX, CN55XX,
+ 	  CN54XX, CN52XX, and CN6XXX chips.
+ 
++config OCTEON_PIP_ETHERNET
++	tristate "Octeon PIP/PKO Ethernet ports driver (CN3XXX-CN7XXX)"
++	depends on CAVIUM_OCTEON_SOC || COMPILE_TEST
++	depends on 64BIT
++	depends on !CAVIUM_OCTEON_SOC || OCTEON_ETHERNET=n
++	select PHYLINK
++	select MDIO_OCTEON
++	select PAGE_POOL
++	help
++	  Driver for the Ethernet ports behind the packet input (PIP/IPD)
++	  and packet output (PKO) units of the Cavium OCTEON, OCTEON+,
++	  OCTEON II and the smaller OCTEON III models (CN70XX/CN71XX):
++	  the SGMII, QSGMII, 1000BASE-X, RGMII, GMII and XAUI ports, and
++	  the NPI and loopback ports.
++
++	  The staging driver octeon-ethernet (OCTEON_ETHERNET) drives the
++	  same hardware. On OCTEON only one of the two can be built.
++
++	  To compile this driver as a module, choose M here: the module
++	  will be called octeon_pip.
++
+ config LIQUIDIO_VF
+ 	tristate "Cavium LiquidIO VF support"
+ 	depends on 64BIT && PCI_MSI
+--- a/drivers/net/ethernet/cavium/octeon/Makefile
++++ b/drivers/net/ethernet/cavium/octeon/Makefile
+@@ -4,3 +4,17 @@
+ #
+ 
+ obj-$(CONFIG_OCTEON_MGMT_ETHERNET)	+= octeon_mgmt.o
++
++obj-$(CONFIG_OCTEON_PIP_ETHERNET)	+= octeon_pip.o
++
++octeon_pip-y := octeon_pip_main.o
++octeon_pip-y += octeon_pip_ethtool.o
++octeon_pip-y += octeon_pip_fpa.o
++octeon_pip-y += octeon_pip_gmx.o
++octeon_pip-y += octeon_pip_ipd.o
++octeon_pip-y += octeon_pip_link.o
++octeon_pip-y += octeon_pip_pcs.o
++octeon_pip-y += octeon_pip_pko.o
++octeon_pip-y += octeon_pip_pow.o
++octeon_pip-y += octeon_pip_rx.o
++octeon_pip-y += octeon_pip_tx.o
