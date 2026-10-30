@@ -3,7 +3,7 @@
 #
 
 if [ -x /usr/sbin/blkid ]; then
-  RAMFS_COPY_BIN="/usr/sbin/blkid"
+  RAMFS_COPY_BIN="$RAMFS_COPY_BIN /usr/sbin/blkid"
 fi
 
 platform_get_rootfs() {
@@ -47,6 +47,9 @@ platform_copy_config_helper() {
 
 platform_copy_config() {
 	case "$(board_name)" in
+	pan,pa-220)
+		pa220_copy_config
+		;;
 	ubnt,erlite|\
 	ubnt,usg)
 		platform_copy_config_helper /dev/sda1 vfat
@@ -121,6 +124,14 @@ platform_do_upgrade() {
 	local rootfs="$(platform_get_rootfs)"
 	local kernel=
 
+	if [ "$board" = "pan,pa-220" ]; then
+		pa220_do_upgrade "$tar_file" || {
+			echo "PA-220 upgrade failed; remain in RAM and recover using the console."
+			exit 1
+		}
+		return 0
+	fi
+
 	if [ ! -b "${rootfs}" ] && [ "${board}" = "cisco,vedge1000" ]; then
 		# Default to the built-in USB disk for N821
 		rootfs="$(platform_get_n821_disk 2)"
@@ -154,6 +165,15 @@ platform_do_upgrade() {
 platform_check_image() {
 	local board=$(board_name)
 	local tar_file="$1"
+
+	if [ "$board" = "pan,pa-220" ]; then
+		pa220_check_layout || {
+			echo "Install the PA-220 eMMC layout from the RAM image using pa220-install."
+			return 1
+		}
+		pa220_check_image "$tar_file"
+		return $?
+	fi
 
 	local board_dir=$(tar tf "$tar_file" | grep -m 1 '^sysupgrade-.*/$')
 	board_dir=${board_dir%/}

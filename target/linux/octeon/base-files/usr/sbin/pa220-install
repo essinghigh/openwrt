@@ -1,0 +1,73 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Install from the RAM image. The SPI bootloader is installed separately.
+
+. /lib/functions.sh
+. /lib/upgrade/pa220.sh
+. /lib/upgrade/fwtool.sh
+
+die() {
+	echo "ERROR: $*" >&2
+	exit 1
+}
+
+v() {
+	echo "$*"
+}
+
+server="$1"
+image="${2:-openwrt-octeon-generic-pan_pa-220-ext4-sysupgrade.tar}"
+work=/tmp/pa220-install
+
+[ -n "$server" ] || die "usage: pa220-install <tftp-server> [image]"
+case "$image" in
+""|*[!a-zA-Z0-9._-]*) die "image must be a file name without a directory" ;;
+esac
+[ "$(board_name)" = "pan,pa-220" ] || die "not a PA-220"
+case "$(awk '$2 == "/" { type = $3 } END { print type }' /proc/mounts)" in
+rootfs|ramfs|tmpfs) ;;
+*) die "run this from the OpenWrt RAM image" ;;
+esac
+[ -b "$PA220_DISK" ] || die "eMMC not found"
+grep -q "^$PA220_DISK" /proc/mounts && die "an eMMC partition is mounted"
+
+mkdir -p "$work" || die "cannot create working directory"
+echo "Fetching $image from $server."
+tftp -g -b 1468 -r "$image" -l "$work/$image" "$server" ||
+	tftp -g -r "$image" -l "$work/$image" "$server" || die "TFTP download failed"
+REQUIRE_IMAGE_METADATA=1
+SAVE_CONFIG=0
+fwtool_check_image "$work/$image" || die "image metadata does not match this board"
+pa220_check_image "$work/$image" || die "invalid image"
+
+# Validate and extract everything before changing the partition table.
+tar xf "$work/$image" sysupgrade-pan_pa-220/kernel -O > "$work/kernel" || die "kernel extraction failed"
+tar xf "$work/$image" sysupgrade-pan_pa-220/root -O > "$work/root.img" || die "root extraction failed"
+sectors=$(cat /sys/class/block/mmcblk0/size)
+[ "$sectors" -gt $((PA220_ROOT_START + 2097152)) ] || die "eMMC is too small"
+[ -s "$work/kernel" ] && [ -s "$work/root.img" ] || die "image payload is empty"
+[ "$(wc -c < "$work/kernel")" -lt $((PA220_BOOT_SIZE * 512 - 1048576)) ] || die "kernel is too large"
+[ "$(wc -c < "$work/root.img")" -le $(((sectors - PA220_ROOT_START) * 512)) ] || die "root filesystem is too large"
+
+sfdisk -l "$PA220_DISK"
+echo "New layout: p1 = 256 MiB ext3 boot; p2 = remaining eMMC, ext4 root."
+echo "THIS ERASES THE WHOLE eMMC. Type yes to continue:"
+read -r answer
+[ "$answer" = yes ] || die "cancelled"
+
+sfdisk -q --wipe always --wipe-partitions always "$PA220_DISK" <<-EOF || die "partitioning failed"
+	label: dos
+	unit: sectors
+	start=$PA220_BOOT_START, size=$PA220_BOOT_SIZE, type=83
+	start=$PA220_ROOT_START, type=83
+EOF
+sync
+i=0
+until pa220_check_layout; do
+	i=$((i + 1))
+	[ "$i" -lt 20 ] || die "new partitions were not detected; reboot the RAM image"
+	sleep 1
+done
+mke2fs -F -q -t ext3 -b 4096 -I 128 -L boot "$PA220_BOOTDEV" || die "boot format failed"
+pa220_write_image "$work" || die "installation failed; remain in the RAM image for recovery"
+echo "Installation complete. Reboot to start OpenWrt from eMMC."

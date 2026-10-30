@@ -120,4 +120,17 @@ define Device/cisco_vedge1000
 endef
 TARGET_DEVICES += cisco_vedge1000
 
+define Device/pan_pa-220
+  DEVICE_VENDOR := Palo Alto Networks
+  DEVICE_MODEL := PA-220
+  DEVICE_DTS := cn7130_pan_pa-220
+  DEVICE_PACKAGES += blkid kmod-hwmon-tmp421 kmod-rtc-ds1307 resize2fs sfdisk
+  KERNEL := kernel-bin | strip-kernel | patch-cmdline | append-dtb-to-elf
+  KERNEL_DEPENDS := $$(wildcard $(DTS_DIR)/$(DEVICE_DTS).dts)
+  CMDLINE := -root=/dev/mmcblk0p2 rootfstype=ext4 rootwait console=ttyS0,115200 pcie_octeon.pcie_disable=1
+  FILESYSTEMS := ext4
+  IMAGE/sysupgrade.tar := sysupgrade-tar | append-metadata
+endef
+TARGET_DEVICES += pan_pa-220
+
 $(eval $(call BuildImage))
